@@ -3,26 +3,26 @@ Progress Tracking Utilities
 ===========================
 
 Functions for tracking and displaying progress of the autonomous coding agent.
-Progress is tracked via Linear issues, with local state cached in .linear_project.json.
+Progress is tracked via GitHub issues, with local state cached in .github_project.json.
 """
 
 import json
 from pathlib import Path
 
-from linear_config import LINEAR_PROJECT_MARKER
+from github_config import GITHUB_PROJECT_MARKER
 
 
-def load_linear_project_state(project_dir: Path) -> dict | None:
+def load_github_project_state(project_dir: Path) -> dict | None:
     """
-    Load the Linear project state from the marker file.
+    Load the GitHub project state from the marker file.
 
     Args:
-        project_dir: Directory containing .linear_project.json
+        project_dir: Directory containing .github_project.json
 
     Returns:
         Project state dict or None if not initialized
     """
-    marker_file = project_dir / LINEAR_PROJECT_MARKER
+    marker_file = project_dir / GITHUB_PROJECT_MARKER
 
     if not marker_file.exists():
         return None
@@ -34,17 +34,17 @@ def load_linear_project_state(project_dir: Path) -> dict | None:
         return None
 
 
-def is_linear_initialized(project_dir: Path) -> bool:
+def is_github_initialized(project_dir: Path) -> bool:
     """
-    Check if Linear project has been initialized.
+    Check if GitHub project has been initialized.
 
     Args:
         project_dir: Directory to check
 
     Returns:
-        True if .linear_project.json exists and is valid
+        True if .github_project.json exists and is valid
     """
-    state = load_linear_project_state(project_dir)
+    state = load_github_project_state(project_dir)
     return state is not None and state.get("initialized", False)
 
 
@@ -62,20 +62,23 @@ def print_progress_summary(project_dir: Path) -> None:
     """
     Print a summary of current progress.
 
-    Since actual progress is tracked in Linear, this reads the local
-    state file for cached information. The agent updates Linear directly
+    Since actual progress is tracked in GitHub, this reads the local
+    state file for cached information. The agent updates GitHub directly
     and reports progress in session comments.
     """
-    state = load_linear_project_state(project_dir)
+    state = load_github_project_state(project_dir)
 
     if state is None:
-        print("\nProgress: Linear project not yet initialized")
+        print("\nProgress: GitHub project not yet initialized")
         return
 
     total = state.get("total_issues", 0)
-    meta_issue = state.get("meta_issue_id", "unknown")
+    meta_issue = state.get("meta_issue_number", "unknown")
+    repo_owner = state.get("repo_owner", "unknown")
+    repo_name = state.get("repo_name", "unknown")
 
-    print(f"\nLinear Project Status:")
+    print(f"\nGitHub Project Status:")
+    print(f"  Repository: {repo_owner}/{repo_name}")
     print(f"  Total issues created: {total}")
-    print(f"  META issue ID: {meta_issue}")
-    print(f"  (Check Linear for current Done/In Progress/Todo counts)")
+    print(f"  META issue number: #{meta_issue}")
+    print(f"  (Check GitHub for current status:done/status:in-progress/status:todo counts)")

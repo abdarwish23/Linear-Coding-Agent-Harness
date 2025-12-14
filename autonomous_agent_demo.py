@@ -47,7 +47,7 @@ Examples:
 
 Environment Variables:
   CLAUDE_CODE_OAUTH_TOKEN    Claude Code OAuth token (required)
-  LINEAR_API_KEY             Linear API key (required)
+  GITHUB_TOKEN               GitHub Personal Access Token (required)
         """,
     )
 
@@ -87,12 +87,15 @@ def main() -> None:
         print("  export CLAUDE_CODE_OAUTH_TOKEN='your-token-here'")
         return
 
-    # Check for Linear API key
-    if not os.environ.get("LINEAR_API_KEY"):
-        print("Error: LINEAR_API_KEY environment variable not set")
-        print("\nGet your API key from: https://linear.app/YOUR-TEAM/settings/api")
+    # Check for GitHub token
+    if not os.environ.get("GITHUB_TOKEN"):
+        print("Error: GITHUB_TOKEN environment variable not set")
+        print("\nGet your token from: https://github.com/settings/tokens")
+        print("Create a Personal Access Token (classic) with scopes:")
+        print("  - repo (Full control of private repositories)")
+        print("  - project (Full control of projects)")
         print("\nThen set it:")
-        print("  export LINEAR_API_KEY='lin_api_xxxxxxxxxxxxx'")
+        print("  export GITHUB_TOKEN='ghp_xxxxxxxxxxxxx'")
         return
 
     # Automatically place projects in generations/ directory unless already specified

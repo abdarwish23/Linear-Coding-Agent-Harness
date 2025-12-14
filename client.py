@@ -26,32 +26,29 @@ PUPPETEER_TOOLS = [
     "mcp__puppeteer__puppeteer_evaluate",
 ]
 
-# Linear MCP tools for project management
-# Official Linear MCP server at mcp.linear.app
-LINEAR_TOOLS = [
-    # Team & Project discovery
-    "mcp__linear__list_teams",
-    "mcp__linear__get_team",
-    "mcp__linear__list_projects",
-    "mcp__linear__get_project",
-    "mcp__linear__create_project",
-    "mcp__linear__update_project",
-    # Issue management
-    "mcp__linear__list_issues",
-    "mcp__linear__get_issue",
-    "mcp__linear__create_issue",
-    "mcp__linear__update_issue",
-    "mcp__linear__list_my_issues",
-    # Comments
-    "mcp__linear__list_comments",
-    "mcp__linear__create_comment",
-    # Workflow
-    "mcp__linear__list_issue_statuses",
-    "mcp__linear__get_issue_status",
-    "mcp__linear__list_issue_labels",
-    # Users
-    "mcp__linear__list_users",
-    "mcp__linear__get_user",
+# GitHub MCP tools for project management
+# Official GitHub MCP server: @modelcontextprotocol/server-github
+GITHUB_TOOLS = [
+    # Repository
+    "mcp__github__get_file_contents",
+    "mcp__github__search_repositories",
+    "mcp__github__create_repository",
+    "mcp__github__get_repository",
+    # Issues
+    "mcp__github__create_issue",
+    "mcp__github__get_issue",
+    "mcp__github__update_issue",
+    "mcp__github__list_issues",
+    "mcp__github__add_issue_comment",
+    "mcp__github__search_issues",
+    # Labels
+    "mcp__github__create_label",
+    "mcp__github__get_label",
+    "mcp__github__list_labels",
+    # Pull Requests (for future use)
+    "mcp__github__create_pull_request",
+    "mcp__github__get_pull_request",
+    "mcp__github__list_pull_requests",
 ]
 
 # Built-in tools
@@ -89,11 +86,14 @@ def create_client(project_dir: Path, model: str) -> ClaudeSDKClient:
             "Run 'claude setup-token after installing the Claude Code CLI."
         )
 
-    linear_api_key = os.environ.get("LINEAR_API_KEY")
-    if not linear_api_key:
+    github_token = os.environ.get("GITHUB_TOKEN")
+    if not github_token:
         raise ValueError(
-            "LINEAR_API_KEY environment variable not set.\n"
-            "Get your API key from: https://linear.app/YOUR-TEAM/settings/api"
+            "GITHUB_TOKEN environment variable not set.\n"
+            "Get your token from: https://github.com/settings/tokens\n"
+            "Create a Personal Access Token (classic) with scopes:\n"
+            "  - repo (Full control of private repositories)\n"
+            "  - project (Full control of projects)"
         )
 
     # Create comprehensive security settings
@@ -115,8 +115,8 @@ def create_client(project_dir: Path, model: str) -> ClaudeSDKClient:
                 "Bash(*)",
                 # Allow Puppeteer MCP tools for browser automation
                 *PUPPETEER_TOOLS,
-                # Allow Linear MCP tools for project management
-                *LINEAR_TOOLS,
+                # Allow GitHub MCP tools for project management
+                *GITHUB_TOOLS,
             ],
         },
     }
@@ -133,27 +133,30 @@ def create_client(project_dir: Path, model: str) -> ClaudeSDKClient:
     print("   - Sandbox enabled (OS-level bash isolation)")
     print(f"   - Filesystem restricted to: {project_dir.resolve()}")
     print("   - Bash commands restricted to allowlist (see security.py)")
-    print("   - MCP servers: puppeteer (browser automation), linear (project management)")
+    print("   - MCP servers: puppeteer (browser automation), github (project management)")
     print()
 
     return ClaudeSDKClient(
         options=ClaudeCodeOptions(
             model=model,
-            system_prompt="You are an expert full-stack developer building a production-quality web application. You use Linear for project management and tracking all your work.",
+            system_prompt="You are an expert full-stack developer building a production-quality web application. You use GitHub Issues for project management and tracking all your work.",
             allowed_tools=[
                 *BUILTIN_TOOLS,
                 *PUPPETEER_TOOLS,
-                *LINEAR_TOOLS,
+                *GITHUB_TOOLS,
             ],
             mcp_servers={
                 "puppeteer": {"command": "npx", "args": ["puppeteer-mcp-server"]},
-                # Linear MCP with Streamable HTTP transport (recommended over SSE)
-                # See: https://linear.app/docs/mcp
-                "linear": {
-                    "type": "http",
-                    "url": "https://mcp.linear.app/mcp",
-                    "headers": {
-                        "Authorization": f"Bearer {linear_api_key}"
+                # GitHub MCP with stdio transport
+                # See: https://github.com/github/github-mcp-server
+                "github": {
+                    "command": "npx",
+                    "args": [
+                        "-y",
+                        "@modelcontextprotocol/server-github"
+                    ],
+                    "env": {
+                        "GITHUB_PERSONAL_ACCESS_TOKEN": github_token
                     }
                 }
             },

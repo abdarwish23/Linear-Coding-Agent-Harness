@@ -3,7 +3,7 @@
 You are continuing work on a long-running autonomous development task.
 This is a FRESH context window - you have no memory of previous sessions.
 
-You have access to Linear for project management via MCP tools. Linear is your
+You have access to GitHub Issues for project management via MCP tools. GitHub is your
 single source of truth for what needs to be built and what's been completed.
 
 ### STEP 1: GET YOUR BEARINGS (MANDATORY)
@@ -20,8 +20,8 @@ ls -la
 # 3. Read the project specification to understand what you're building
 cat app_spec.txt
 
-# 4. Read the Linear project state
-cat .linear_project.json
+# 4. Read the GitHub project state
+cat .github_project.json
 
 # 5. Check recent git history
 git log --oneline -20
@@ -30,24 +30,25 @@ git log --oneline -20
 Understanding the `app_spec.txt` is critical - it contains the full requirements
 for the application you're building.
 
-### STEP 2: CHECK LINEAR STATUS
+### STEP 2: CHECK GITHUB STATUS
 
-Query Linear to understand current project state. The `.linear_project.json` file
-contains the `project_id` and `team_id` you should use for all Linear queries.
+Query GitHub to understand current project state. The `.github_project.json` file
+contains the `repo_owner` and `repo_name` you should use for all GitHub queries.
 
 1. **Find the META issue** for session context:
-   Use `mcp__linear__list_issues` with the project ID from `.linear_project.json`
-   and search for "[META] Project Progress Tracker".
+   Use `mcp__github__list_issues` to search for "[META] Project Progress Tracker" in title.
    Read the issue description and recent comments for context from previous sessions.
 
+   You can also use `mcp__github__search_issues` with query: `"[META] Project Progress Tracker" in:title`.
+
 2. **Count progress:**
-   Use `mcp__linear__list_issues` with the project ID to get all issues, then count:
-   - Issues with status "Done" = completed
-   - Issues with status "Todo" = remaining
-   - Issues with status "In Progress" = currently being worked on
+   Use `mcp__github__list_issues` to get all issues, then filter by labels:
+   - Issues with label `status:done` = completed
+   - Issues with label `status:todo` = remaining
+   - Issues with label `status:in-progress` = currently being worked on
 
 3. **Check for in-progress work:**
-   If any issue is "In Progress", that should be your first priority.
+   If any issue has label `status:in-progress`, that should be your first priority.
    A previous session may have been interrupted.
 
 ### STEP 3: START SERVERS (IF NOT RUNNING)
@@ -67,7 +68,7 @@ Otherwise, start servers manually and document the process.
 The previous session may have introduced bugs. Before implementing anything
 new, you MUST run verification tests.
 
-Use `mcp__linear__list_issues` with the project ID and status "Done" to find 1-2
+Use `mcp__github__list_issues` with label filter `status:done` to find 1-2
 completed features that are core to the app's functionality.
 
 Test these through the browser using Puppeteer:
@@ -76,8 +77,10 @@ Test these through the browser using Puppeteer:
 - Take screenshots to confirm
 
 **If you find ANY issues (functional or visual):**
-- Use `mcp__linear__update_issue` to set status back to "In Progress"
-- Add a comment explaining what broke
+- Use `mcp__github__update_issue` to change labels:
+  - Remove label `status:done`
+  - Add label `status:in-progress`
+- Add a comment explaining what broke using `mcp__github__add_issue_comment`
 - Fix the issue BEFORE moving to new features
 - This includes UI bugs like:
   * White-on-white text or poor contrast
@@ -90,17 +93,21 @@ Test these through the browser using Puppeteer:
 
 ### STEP 5: SELECT NEXT ISSUE TO WORK ON
 
-Use `mcp__linear__list_issues` with the project ID from `.linear_project.json`:
-- Filter by `status`: "Todo"
-- Sort by priority (1=urgent is highest)
-- `limit`: 5
+Use `mcp__github__list_issues` with:
+- `owner`: from `.github_project.json`
+- `repo`: from `.github_project.json`
+- `labels`: "status:todo"
+- `state`: "open"
+- `per_page`: 5
 
-Review the highest-priority unstarted issues and select ONE to work on.
+Review the highest-priority unstarted issues (look for `priority:urgent` first, then `priority:high`)
+and select ONE to work on.
 
 ### STEP 6: CLAIM THE ISSUE
 
-Before starting work, use `mcp__linear__update_issue` to:
-- Set the issue's `status` to "In Progress"
+Before starting work, update the issue's labels using `mcp__github__update_issue`:
+- Remove label: `status:todo`
+- Add label: `status:in-progress`
 
 This signals to any other agents (or humans watching) that this issue is being worked on.
 
@@ -135,11 +142,11 @@ Use browser automation tools:
 - Skip visual verification
 - Mark issues Done without thorough verification
 
-### STEP 9: UPDATE LINEAR ISSUE (CAREFULLY!)
+### STEP 9: UPDATE GITHUB ISSUE (CAREFULLY!)
 
 After thorough verification:
 
-1. **Add implementation comment** using `mcp__linear__create_comment`:
+1. **Add implementation comment** using `mcp__github__add_issue_comment`:
    ```markdown
    ## Implementation Complete
 
@@ -156,10 +163,11 @@ After thorough verification:
    [commit hash and message]
    ```
 
-2. **Update status** using `mcp__linear__update_issue`:
-   - Set `status` to "Done"
+2. **Update labels** using `mcp__github__update_issue`:
+   - Remove label: `status:in-progress`
+   - Add label: `status:done`
 
-**ONLY update status to Done AFTER:**
+**ONLY mark as Done AFTER:**
 - All test steps in the issue description pass
 - Visual verification via screenshots
 - No console errors
@@ -174,24 +182,25 @@ git commit -m "Implement [feature name]
 
 - Added [specific changes]
 - Tested with browser automation
-- Linear issue: [issue identifier]
+- GitHub issue: #[issue number]
 "
 ```
 
 ### STEP 11: UPDATE META ISSUE
 
-Add a comment to the "[META] Project Progress Tracker" issue with session summary:
+Add a comment to the "[META] Project Progress Tracker" issue with session summary
+using `mcp__github__add_issue_comment`:
 
 ```markdown
 ## Session Complete - [Brief description]
 
 ### Completed This Session
-- [Issue title]: [Brief summary of implementation]
+- [Issue title] (#[number]): [Brief summary of implementation]
 
 ### Current Progress
-- X issues Done
-- Y issues In Progress
-- Z issues remaining in Todo
+- X issues with status:done
+- Y issues with status:in-progress
+- Z issues remaining with status:todo
 
 ### Verification Status
 - Ran verification tests on [feature names]
@@ -209,19 +218,19 @@ Before context fills up:
 1. Commit all working code
 2. If working on an issue you can't complete:
    - Add a comment explaining progress and what's left
-   - Keep status as "In Progress" (don't revert to Todo)
+   - Keep label as `status:in-progress` (don't revert to `status:todo`)
 3. Update META issue with session summary
 4. Ensure no uncommitted changes
 5. Leave app in working state (no broken features)
 
 ---
 
-## LINEAR WORKFLOW RULES
+## GITHUB WORKFLOW RULES
 
-**Status Transitions:**
-- Todo → In Progress (when you start working)
-- In Progress → Done (when verified complete)
-- Done → In Progress (only if regression found)
+**Label Transitions:**
+- `status:todo` → `status:in-progress` (when you start working)
+- `status:in-progress` → `status:done` (when verified complete)
+- `status:done` → `status:in-progress` (only if regression found)
 
 **Comments Are Your Memory:**
 - Every implementation gets a detailed comment
@@ -229,11 +238,11 @@ Before context fills up:
 - Comments are permanent - future agents will read them
 
 **NEVER:**
-- Delete or archive issues
+- Close or delete issues (keep them open with appropriate labels)
 - Modify issue descriptions or test steps
-- Work on issues already "In Progress" by someone else
-- Mark "Done" without verification
-- Leave issues "In Progress" when switching to another issue
+- Work on issues already labeled `status:in-progress` by someone else
+- Mark as Done without verification
+- Leave issues with `status:in-progress` when switching to another issue
 
 ---
 
@@ -284,7 +293,7 @@ than to start another issue and risk running out of context mid-implementation.
 
 ## IMPORTANT REMINDERS
 
-**Your Goal:** Production-quality application with all Linear issues Done
+**Your Goal:** Production-quality application with all GitHub issues marked as Done
 
 **This Session's Goal:** Make meaningful progress with clean handoff
 
